@@ -1,0 +1,10 @@
+name: VoxelLink
+main: dev.voxellink.VoxelLinkBukkit
+version: 0.1
+author: VoxelLink
+description: A bot plugin that connects Minecraft with QQ, Kook, Discord, etc.
+softdepend:
+  - PlaceholderAPI
+commands:
+  voxellink:
+    description: VoxelLink command
