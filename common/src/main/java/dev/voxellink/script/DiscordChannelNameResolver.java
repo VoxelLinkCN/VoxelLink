@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /** Resolves a Discord channel's display name via the REST "get channel" endpoint, which the underlying
- *  gateway client (dev.neovoxel.nbapi) does not expose. Routed through whatever API base the configured
+ *  gateway client (dev.voxellink.api) does not expose. Routed through whatever API base the configured
  *  proxy mode resolved to, so it keeps working for deployments that can't reach discord.com directly.
  *  Cached, since business-script dispatch is synchronous and this must not cost a request per message. */
 public final class DiscordChannelNameResolver {

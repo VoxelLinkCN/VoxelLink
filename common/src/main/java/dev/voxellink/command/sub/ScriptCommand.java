@@ -5,8 +5,8 @@ import dev.voxellink.adapter.CommandSender;
 import dev.voxellink.script.Script;
 import dev.voxellink.script.remote.RemoteScript;
 import dev.voxellink.script.remote.Repository;
-import dev.neovoxel.nsapi.entity.Row;
-import dev.neovoxel.nsapi.table.DatabaseTable;
+import dev.voxellink.storage.entity.Row;
+import dev.voxellink.storage.table.DatabaseTable;
 
 import java.util.List;
 import java.util.Objects;

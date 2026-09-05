@@ -1,17 +1,17 @@
 package dev.voxellink.bot;
 
-import dev.neovoxel.nbapi.action.get.*;
-import dev.neovoxel.nbapi.action.set.SendPrivateMessage;
-import dev.neovoxel.nbapi.action.set.*;
-import dev.neovoxel.nbapi.event.NEvent;
-import dev.neovoxel.nbapi.event.message.GroupMessageEvent;
-import dev.neovoxel.nbapi.event.message.PrivateMessageEvent;
-import dev.neovoxel.nbapi.event.notice.*;
-import dev.neovoxel.nbapi.event.request.FriendRequestEvent;
-import dev.neovoxel.nbapi.event.request.GroupRequestEvent;
-import dev.neovoxel.nbapi.event.request.GroupRequestType;
-import dev.neovoxel.nbapi.listener.NBotEventHandler;
-import dev.neovoxel.nbapi.listener.NBotListener;
+import dev.voxellink.api.action.get.*;
+import dev.voxellink.api.action.set.SendPrivateMessage;
+import dev.voxellink.api.action.set.*;
+import dev.voxellink.api.event.NEvent;
+import dev.voxellink.api.event.message.GroupMessageEvent;
+import dev.voxellink.api.event.message.PrivateMessageEvent;
+import dev.voxellink.api.event.notice.*;
+import dev.voxellink.api.event.request.FriendRequestEvent;
+import dev.voxellink.api.event.request.GroupRequestEvent;
+import dev.voxellink.api.event.request.GroupRequestType;
+import dev.voxellink.api.listener.VBotEventHandler;
+import dev.voxellink.api.listener.VBotListener;
 import dev.voxellink.VoxelLink;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
@@ -23,7 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BotListener implements NBotListener {
+public class BotListener implements VBotListener {
     private final VoxelLink plugin;
 
     private final Map<Value, String> map = new LinkedHashMap<>();
@@ -35,7 +35,7 @@ public class BotListener implements NBotListener {
     @HostAccess.Export
     public void sendGroupMessage(long groupId, String message) {
         boolean sent = false;
-        for (dev.neovoxel.nbapi.client.NBotClient client : plugin.getBotProvider().getBot()) {
+        for (dev.voxellink.api.client.VBotClient client : plugin.getBotProvider().getBot()) {
             if (client.isConnected()) {
                 client.action(new SendGroupMessage(groupId, textMessageSegments(message)));
                 sent = true;
@@ -63,7 +63,7 @@ public class BotListener implements NBotListener {
     @HostAccess.Export
     public void sendPrivateMessage(long userId, String message) {
         boolean sent = false;
-        for (dev.neovoxel.nbapi.client.NBotClient client : plugin.getBotProvider().getBot()) {
+        for (dev.voxellink.api.client.VBotClient client : plugin.getBotProvider().getBot()) {
             if (client.isConnected()) {
                 client.action(new SendPrivateMessage(userId, textMessageSegments(message)));
                 sent = true;
@@ -258,7 +258,7 @@ public class BotListener implements NBotListener {
         }
     }
     
-    @NBotEventHandler
+    @VBotEventHandler
     private void onGroupMessage(GroupMessageEvent event) {
         if (plugin.getScriptProvider() == null) {
             plugin.getNeoLogger().warn("QQGroupMessageEvent rejected: script system is not loaded");
@@ -305,7 +305,7 @@ public class BotListener implements NBotListener {
         return null;
     }
 
-    @NBotEventHandler
+    @VBotEventHandler
     private void onPrivateMessage(PrivateMessageEvent event) {
         String raw = event.getRawMessage();
         String bindAction = bindOrUnbindAction(raw);
@@ -324,32 +324,32 @@ public class BotListener implements NBotListener {
         fireEvent("PrivateMessageEvent", event);
     }
 
-    @NBotEventHandler
+    @VBotEventHandler
     private void onFriendAdd(FriendAddEvent event) {
         fireEvent("FriendAddEvent", event);
     }
 
-    @NBotEventHandler
+    @VBotEventHandler
     private void onGroupDecrease(GroupDecreaseEvent event) {
         fireEvent("GroupDecreaseEvent", event);
     }
 
-    @NBotEventHandler
+    @VBotEventHandler
     private void onGroupIncrease(GroupIncreaseEvent event) {
         fireEvent("GroupIncreaseEvent", event);
     }
 
-    @NBotEventHandler
+    @VBotEventHandler
     private void onPoke(PokeEvent event) {
         fireEvent("PokeEvent", event);
     }
 
-    @NBotEventHandler
+    @VBotEventHandler
     private void onFriendRequest(FriendRequestEvent event) {
         fireEvent("FriendRequestEvent", event);
     }
 
-    @NBotEventHandler
+    @VBotEventHandler
     private void onGroupRequest(GroupRequestEvent event) {
         fireEvent("GroupRequestEvent", event);
     }

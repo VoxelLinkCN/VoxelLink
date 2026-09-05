@@ -16,8 +16,8 @@ package dev.voxellink.metrics;
  */
 
 import dev.voxellink.VoxelLink;
-import dev.neovoxel.nsapi.entity.Row;
-import dev.neovoxel.nsapi.table.DatabaseTable;
+import dev.voxellink.storage.entity.Row;
+import dev.voxellink.storage.table.DatabaseTable;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;

@@ -1,6 +1,6 @@
 package dev.voxellink.config;
 
-import dev.neovoxel.nbapi.util.Role;
+import dev.voxellink.api.util.Role;
 import dev.voxellink.VoxelLink;
 import org.graalvm.polyglot.HostAccess;
 import org.json.JSONObject;

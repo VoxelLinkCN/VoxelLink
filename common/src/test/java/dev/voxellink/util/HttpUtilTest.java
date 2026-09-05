@@ -12,10 +12,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class HttpUtilTest {
     @Test
     void onlyPrefixesSupportedGithubUrls() {
-        assertEquals("https://api.github.com/repos/NeoVoxelDev/VoxelLink/releases",
-                HttpUtil.proxyUrlForTest("https://api.github.com/repos/NeoVoxelDev/VoxelLink/releases"));
-        assertEquals("http://127.0.0.1:7897/https://api.github.com/repos/NeoVoxelDev/VoxelLink/releases",
-                HttpUtil.proxyUrlForTest("https://api.github.com/repos/NeoVoxelDev/VoxelLink/releases", "http://127.0.0.1:7897/"));
+        assertEquals("https://api.github.com/repos/VoxelLinkCN/VoxelLink/releases",
+                HttpUtil.proxyUrlForTest("https://api.github.com/repos/VoxelLinkCN/VoxelLink/releases"));
+        assertEquals("http://127.0.0.1:7897/https://api.github.com/repos/VoxelLinkCN/VoxelLink/releases",
+                HttpUtil.proxyUrlForTest("https://api.github.com/repos/VoxelLinkCN/VoxelLink/releases", "http://127.0.0.1:7897/"));
         assertEquals("https://example.com/data", HttpUtil.proxyUrlForTest("https://example.com/data"));
     }
 

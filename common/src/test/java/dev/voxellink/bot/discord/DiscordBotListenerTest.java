@@ -1,11 +1,11 @@
 package dev.voxellink.bot.discord;
 
-import dev.neovoxel.nbapi.discord.data.DiscordMessage;
-import dev.neovoxel.nbapi.discord.data.DiscordUser;
-import dev.neovoxel.nbapi.discord.event.DiscordEvent;
-import dev.neovoxel.nbapi.discord.event.DiscordMessageDeleteEvent;
-import dev.neovoxel.nbapi.discord.event.DiscordMessageEvent;
-import dev.neovoxel.nbapi.discord.event.DiscordReadyEvent;
+import dev.voxellink.api.discord.data.DiscordMessage;
+import dev.voxellink.api.discord.data.DiscordUser;
+import dev.voxellink.api.discord.event.DiscordEvent;
+import dev.voxellink.api.discord.event.DiscordMessageDeleteEvent;
+import dev.voxellink.api.discord.event.DiscordMessageEvent;
+import dev.voxellink.api.discord.event.DiscordReadyEvent;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 

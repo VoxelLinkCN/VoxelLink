@@ -1,11 +1,11 @@
 package dev.voxellink.bot;
 
-import dev.neovoxel.nbapi.action.Action;
-import dev.neovoxel.nbapi.action.get.GetAction;
-import dev.neovoxel.nbapi.client.NBotClient;
-import dev.neovoxel.nbapi.discord.client.DiscordClient;
-import dev.neovoxel.nbapi.discord.data.DiscordMessage;
-import dev.neovoxel.nbapi.listener.NBotListener;
+import dev.voxellink.api.action.Action;
+import dev.voxellink.api.action.get.GetAction;
+import dev.voxellink.api.client.VBotClient;
+import dev.voxellink.api.discord.client.DiscordClient;
+import dev.voxellink.api.discord.data.DiscordMessage;
+import dev.voxellink.api.listener.VBotListener;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -54,13 +54,13 @@ class BotProviderAwaitConnectionsTest {
      * Regression: BotProvider.addBot used to just overwrite the clients map, leaving a previous
      * client for the same type connected and still dispatching every inbound event forever (an
      * orphaned connection duplicating replies — same underlying bug class as
-     * DiscordClientManagerTest's superseded-client case, on the QQ/NBotClient side instead of Discord).
+     * DiscordClientManagerTest's superseded-client case, on the QQ/VBotClient side instead of Discord).
      */
     @Test
     void closePreviousDisconnectsAndDetachesTheSupersededClient() {
         FakeBotClient previous = new FakeBotClient(true);
         FakeBotClient replacement = new FakeBotClient(true);
-        NBotListener listener = new NBotListener() {};
+        VBotListener listener = new VBotListener() {};
         previous.addListener(listener);
 
         BotProvider.closePrevious(previous, replacement, listener);
@@ -72,7 +72,7 @@ class BotProviderAwaitConnectionsTest {
     @Test
     void closePreviousIsANoOpWhenThereWasNoPreviousClientOrItIsTheSameInstance() {
         FakeBotClient client = new FakeBotClient(true);
-        NBotListener listener = new NBotListener() {};
+        VBotListener listener = new VBotListener() {};
 
         BotProvider.closePrevious(null, client, listener);
         BotProvider.closePrevious(client, client, listener);
@@ -80,17 +80,17 @@ class BotProviderAwaitConnectionsTest {
         assertFalse(client.disconnectCalled, "must not disconnect a null previous or the client replacing itself");
     }
 
-    private static class FakeBotClient implements NBotClient {
+    private static class FakeBotClient implements VBotClient {
         private final boolean connected;
         private boolean disconnectCalled;
-        private NBotListener listener;
+        private VBotListener listener;
         FakeBotClient(boolean connected) { this.connected = connected; }
         @Override public void connect() {}
         @Override public void disconnect() { disconnectCalled = true; }
         @Override public void reconnect() {}
-        @Override public void addListener(NBotListener listener) { this.listener = listener; }
-        @Override public void removeListener(NBotListener listener) { if (this.listener == listener) this.listener = null; }
-        @Override public boolean hasListener(NBotListener listener) { return this.listener == listener; }
+        @Override public void addListener(VBotListener listener) { this.listener = listener; }
+        @Override public void removeListener(VBotListener listener) { if (this.listener == listener) this.listener = null; }
+        @Override public boolean hasListener(VBotListener listener) { return this.listener == listener; }
         @Override public void action(Action action) {}
         @Override public <T> void action(GetAction<T> action, Consumer<T> consumer) {}
         @Override public boolean isConnected() { return connected; }
@@ -104,9 +104,9 @@ class BotProviderAwaitConnectionsTest {
         @Override public void shutdown() {}
         @Override public void reconnect() {}
         @Override public boolean isConnected() { return connected; }
-        @Override public void addListener(NBotListener listener) {}
-        @Override public void removeListener(NBotListener listener) {}
-        @Override public boolean hasListener(NBotListener listener) { return false; }
+        @Override public void addListener(VBotListener listener) {}
+        @Override public void removeListener(VBotListener listener) {}
+        @Override public boolean hasListener(VBotListener listener) { return false; }
         @Override public CompletableFuture<DiscordMessage> sendMessage(long channelId, String content) { return new CompletableFuture<>(); }
         @Override public CompletableFuture<DiscordMessage> editMessage(long channelId, long messageId, String content) { return new CompletableFuture<>(); }
         @Override public CompletableFuture<Void> deleteMessage(long channelId, long messageId) { return new CompletableFuture<>(); }

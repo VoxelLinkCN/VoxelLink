@@ -1,8 +1,8 @@
 package dev.voxellink.bot.discord;
 
-import dev.neovoxel.nbapi.discord.client.DiscordClient;
-import dev.neovoxel.nbapi.discord.data.DiscordMessage;
-import dev.neovoxel.nbapi.listener.NBotListener;
+import dev.voxellink.api.discord.client.DiscordClient;
+import dev.voxellink.api.discord.data.DiscordMessage;
+import dev.voxellink.api.listener.VBotListener;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -14,7 +14,7 @@ class DiscordClientManagerTest {
     void ownsConnectReconnectAndShutdownLifecycle() {
         DiscordClientManager manager = new DiscordClientManager();
         FakeClient client = new FakeClient();
-        NBotListener listener = new NBotListener() {};
+        VBotListener listener = new VBotListener() {};
 
         manager.addAndConnect("discord", client, listener);
         assertEquals(1, client.connectCalls);
@@ -35,7 +35,7 @@ class DiscordClientManagerTest {
         DiscordClientManager manager = new DiscordClientManager();
         FakeClient first = new FakeClient();
         FakeClient second = new FakeClient();
-        NBotListener listener = new NBotListener() {};
+        VBotListener listener = new VBotListener() {};
 
         manager.addAndConnect("discord", first, listener);
         manager.addAndConnect("discord", second, listener);
@@ -54,16 +54,16 @@ class DiscordClientManagerTest {
         private int reconnectCalls;
         private int shutdownCalls;
         private boolean connected;
-        private NBotListener listener;
+        private VBotListener listener;
 
         @Override public void connect() { connectCalls++; connected = true; }
         @Override public void disconnect() { connected = false; }
         @Override public void shutdown() { shutdownCalls++; connected = false; }
         @Override public void reconnect() { reconnectCalls++; connected = true; }
         @Override public boolean isConnected() { return connected; }
-        @Override public void addListener(NBotListener listener) { this.listener = listener; }
-        @Override public void removeListener(NBotListener listener) { if (this.listener == listener) this.listener = null; }
-        @Override public boolean hasListener(NBotListener listener) { return this.listener == listener; }
+        @Override public void addListener(VBotListener listener) { this.listener = listener; }
+        @Override public void removeListener(VBotListener listener) { if (this.listener == listener) this.listener = null; }
+        @Override public boolean hasListener(VBotListener listener) { return this.listener == listener; }
         @Override public CompletableFuture<DiscordMessage> sendMessage(long channelId, String content) { return new CompletableFuture<>(); }
         @Override public CompletableFuture<DiscordMessage> editMessage(long channelId, long messageId, String content) { return new CompletableFuture<>(); }
         @Override public CompletableFuture<Void> deleteMessage(long channelId, long messageId) { return new CompletableFuture<>(); }

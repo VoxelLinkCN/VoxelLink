@@ -2,7 +2,7 @@ package dev.voxellink.migrate;
 
 import dev.voxellink.VoxelLink;
 import dev.voxellink.adapter.NeoLogger;
-import dev.neovoxel.nsapi.DatabaseStorage;
+import dev.voxellink.storage.DatabaseStorage;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;

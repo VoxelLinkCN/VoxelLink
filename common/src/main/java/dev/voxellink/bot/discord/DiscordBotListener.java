@@ -1,13 +1,13 @@
 package dev.voxellink.bot.discord;
 
-import dev.neovoxel.nbapi.discord.client.DiscordClient;
-import dev.neovoxel.nbapi.discord.data.DiscordMessage;
-import dev.neovoxel.nbapi.discord.event.DiscordEvent;
-import dev.neovoxel.nbapi.discord.event.DiscordMessageDeleteEvent;
-import dev.neovoxel.nbapi.discord.event.DiscordMessageEvent;
-import dev.neovoxel.nbapi.discord.event.DiscordReadyEvent;
-import dev.neovoxel.nbapi.listener.NBotEventHandler;
-import dev.neovoxel.nbapi.listener.NBotListener;
+import dev.voxellink.api.discord.client.DiscordClient;
+import dev.voxellink.api.discord.data.DiscordMessage;
+import dev.voxellink.api.discord.event.DiscordEvent;
+import dev.voxellink.api.discord.event.DiscordMessageDeleteEvent;
+import dev.voxellink.api.discord.event.DiscordMessageEvent;
+import dev.voxellink.api.discord.event.DiscordReadyEvent;
+import dev.voxellink.api.listener.VBotEventHandler;
+import dev.voxellink.api.listener.VBotListener;
 import dev.voxellink.VoxelLink;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.Collection;
 
 /** Script-facing Discord bridge. Channel IDs stay Discord channel IDs. */
-public class DiscordBotListener implements NBotListener {
+public class DiscordBotListener implements VBotListener {
     private final VoxelLink plugin;
     private final Map<Value, String> handlers = new ConcurrentHashMap<>();
 
@@ -53,7 +53,7 @@ public class DiscordBotListener implements NBotListener {
             if (client.isConnected()) {
                 try {
                     CompletableFuture<DiscordMessage> send = client.sendMessage(
-                            dev.neovoxel.nbapi.discord.DiscordSnowflake.parse(channelId), message);
+                            dev.voxellink.api.discord.DiscordSnowflake.parse(channelId), message);
                     sends.add(send);
                     send.exceptionally(error -> {
                     plugin.getNeoLogger().error("Failed to send a Discord message", error);
@@ -88,8 +88,8 @@ public class DiscordBotListener implements NBotListener {
 
     @HostAccess.Export
     public void editMessage(String channelId, String messageId, String message) {
-        editMessage(dev.neovoxel.nbapi.discord.DiscordSnowflake.parse(channelId),
-                dev.neovoxel.nbapi.discord.DiscordSnowflake.parse(messageId), message);
+        editMessage(dev.voxellink.api.discord.DiscordSnowflake.parse(channelId),
+                dev.voxellink.api.discord.DiscordSnowflake.parse(messageId), message);
     }
 
     @HostAccess.Export
@@ -106,8 +106,8 @@ public class DiscordBotListener implements NBotListener {
 
     @HostAccess.Export
     public void deleteMessage(String channelId, String messageId) {
-        deleteMessage(dev.neovoxel.nbapi.discord.DiscordSnowflake.parse(channelId),
-                dev.neovoxel.nbapi.discord.DiscordSnowflake.parse(messageId));
+        deleteMessage(dev.voxellink.api.discord.DiscordSnowflake.parse(channelId),
+                dev.voxellink.api.discord.DiscordSnowflake.parse(messageId));
     }
 
     @HostAccess.Export
@@ -129,7 +129,7 @@ public class DiscordBotListener implements NBotListener {
         handlers.clear();
     }
 
-    @NBotEventHandler
+    @VBotEventHandler
     private void onDiscordEvent(DiscordEvent event) {
         if (event instanceof DiscordMessageEvent && "MESSAGE_CREATE".equals(event.getEventName())
                 && ((DiscordMessageEvent) event).getMessage().getAuthor() != null) {
@@ -164,7 +164,7 @@ public class DiscordBotListener implements NBotListener {
 
     /** True when this message is the bot echoing its own forward back into the channel it came from,
      *  which would otherwise loop it straight back into Minecraft. */
-    static boolean isEcho(dev.neovoxel.nbapi.discord.data.DiscordMessage message, long selfId, String channelId,
+    static boolean isEcho(dev.voxellink.api.discord.data.DiscordMessage message, long selfId, String channelId,
                           boolean ignoreSelf, boolean ignoreBots) {
         return !dev.voxellink.discord.DiscordForwardingPolicy.accepts(
                 message, selfId, java.util.Collections.singleton(channelId), ignoreSelf, ignoreBots);

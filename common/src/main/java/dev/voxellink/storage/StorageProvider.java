@@ -2,8 +2,8 @@ package dev.voxellink.storage;
 
 import com.zaxxer.hikari.HikariConfig;
 import dev.voxellink.VoxelLink;
-import dev.neovoxel.nsapi.DatabaseStorage;
-import dev.neovoxel.nsapi.util.DatabaseStorageType;
+import dev.voxellink.storage.DatabaseStorage;
+import dev.voxellink.storage.util.DatabaseStorageType;
 import lombok.Getter;
 import lombok.Setter;
 import org.graalvm.polyglot.HostAccess;

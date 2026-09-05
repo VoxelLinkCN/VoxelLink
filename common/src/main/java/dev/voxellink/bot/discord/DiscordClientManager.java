@@ -1,7 +1,7 @@
 package dev.voxellink.bot.discord;
 
-import dev.neovoxel.nbapi.discord.client.DiscordClient;
-import dev.neovoxel.nbapi.listener.NBotListener;
+import dev.voxellink.api.discord.client.DiscordClient;
+import dev.voxellink.api.listener.VBotListener;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DiscordClientManager {
     private final Map<String, DiscordClient> clients = new ConcurrentHashMap<>();
 
-    public void addAndConnect(String type, DiscordClient client, NBotListener listener) {
+    public void addAndConnect(String type, DiscordClient client, VBotListener listener) {
         client.addListener(listener);
         DiscordClient previous = clients.put(type, client);
         if (previous != null && previous != client) {

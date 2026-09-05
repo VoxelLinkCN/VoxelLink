@@ -1,13 +1,13 @@
 package dev.voxellink.update;
 
-import dev.neovoxel.nbapi.action.data.BasicInfo;
-import dev.neovoxel.nbapi.action.data.GroupMemberInfo;
-import dev.neovoxel.nbapi.action.data.GroupMemberList;
-import dev.neovoxel.nbapi.action.get.GetGroupMemberInfo;
-import dev.neovoxel.nbapi.action.get.GetGroupMemberList;
-import dev.neovoxel.nbapi.action.set.SendGroupMessage;
-import dev.neovoxel.nbapi.client.NBotClient;
-import dev.neovoxel.nbapi.util.Role;
+import dev.voxellink.api.action.data.BasicInfo;
+import dev.voxellink.api.action.data.GroupMemberInfo;
+import dev.voxellink.api.action.data.GroupMemberList;
+import dev.voxellink.api.action.get.GetGroupMemberInfo;
+import dev.voxellink.api.action.get.GetGroupMemberList;
+import dev.voxellink.api.action.set.SendGroupMessage;
+import dev.voxellink.api.client.VBotClient;
+import dev.voxellink.api.util.Role;
 import dev.voxellink.VoxelLink;
 import dev.voxellink.util.HttpUtil;
 import org.json.JSONArray;
@@ -46,12 +46,12 @@ public class NewVersionNotifier {
     }
 
     private boolean isQqConnected() {
-        for (NBotClient client : plugin.getBotProvider().getBot()) if (client.isConnected()) return true;
+        for (VBotClient client : plugin.getBotProvider().getBot()) if (client.isConnected()) return true;
         return false;
     }
 
     private boolean isDiscordConnected() {
-        for (dev.neovoxel.nbapi.discord.client.DiscordClient client : plugin.getBotProvider().getDiscordClients()) {
+        for (dev.voxellink.api.discord.client.DiscordClient client : plugin.getBotProvider().getDiscordClients()) {
             if (client.isConnected()) return true;
         }
         return false;
@@ -70,13 +70,13 @@ public class NewVersionNotifier {
             } catch (NumberFormatException error) {
                 continue;
             }
-            for (NBotClient client : plugin.getBotProvider().getBot()) {
+            for (VBotClient client : plugin.getBotProvider().getBot()) {
                 if (client.isConnected()) notifyQqGroup(client, groupId, adminIds, message);
             }
         }
     }
 
-    private void notifyQqGroup(NBotClient client, long groupId, List<String> adminIds, String message) {
+    private void notifyQqGroup(VBotClient client, long groupId, List<String> adminIds, String message) {
         client.action(new GetGroupMemberList(groupId), (GroupMemberList members) -> {
             if (members == null || members.isEmpty()) {
                 plugin.getNeoLogger().warn("Could not list members of QQ group " + groupId + " to find its owner; falling back to admin-user-ids");
@@ -94,7 +94,7 @@ public class NewVersionNotifier {
         });
     }
 
-    private void notifyQqAdmins(NBotClient client, long groupId, List<String> adminIds, String message) {
+    private void notifyQqAdmins(VBotClient client, long groupId, List<String> adminIds, String message) {
         if (adminIds.isEmpty()) {
             plugin.getNeoLogger().warn("Could not resolve the owner of QQ group " + groupId + " and no admin-user-ids are configured as a fallback");
             return;
@@ -112,7 +112,7 @@ public class NewVersionNotifier {
 
     /** Fires one GetGroupMemberInfo lookup per member (the list action doesn't include role) and
      *  reports the first OWNER found, or null if none responds within 10s. */
-    private void resolveGroupOwner(NBotClient client, long groupId, List<BasicInfo> members, java.util.function.Consumer<Long> onResolved) {
+    private void resolveGroupOwner(VBotClient client, long groupId, List<BasicInfo> members, java.util.function.Consumer<Long> onResolved) {
         AtomicReference<Long> ownerId = new AtomicReference<>();
         CompletableFuture<?>[] futures = members.stream().map(member -> {
             CompletableFuture<Void> future = new CompletableFuture<>();

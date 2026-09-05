@@ -33,7 +33,7 @@ subprojects {
         // Runtime libraries are bundled into each platform jar. Keeping these
         // here avoids network access and class-loader mutation during startup.
         implementation("org.java-websocket:Java-WebSocket:1.6.0")
-        implementation("dev.neovoxel.nbapi:NeoBotAPI:1.3.0") {
+        implementation("dev.voxellink.api:VoxBotAPI:1.3.0") {
             exclude(group = "org.java-websocket")
             exclude(group = "org.apache.httpcomponents")
             exclude(group = "commons-codec")
@@ -52,7 +52,7 @@ subprojects {
         compileOnly("org.slf4j:slf4j-api:2.0.17")
 
         // storage
-        implementation("dev.neovoxel.nsapi:NeoStorageAPI:1.1.0")
+        implementation("dev.voxellink.storage:VoxStorageAPI:1.1.0")
         implementation("com.mysql:mysql-connector-j:8.2.0")
         implementation("org.mariadb.jdbc:mariadb-java-client:3.5.6")
         implementation("org.postgresql:postgresql:42.7.8")

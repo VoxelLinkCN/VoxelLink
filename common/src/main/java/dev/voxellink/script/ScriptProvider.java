@@ -103,11 +103,11 @@ public class ScriptProvider {
         try (ScanResult scan = new ClassGraph()
                 .enableClassInfo()
                 .acceptPackages(
-                        "dev.neovoxel.nsapi",
-                        "dev.neovoxel.nbapi.action",
-                        "dev.neovoxel.nbapi.event",
-                        "dev.neovoxel.nbapi.discord",
-                        "dev.neovoxel.nbapi.util")
+                        "dev.voxellink.storage",
+                        "dev.voxellink.api.action",
+                        "dev.voxellink.api.event",
+                        "dev.voxellink.api.discord",
+                        "dev.voxellink.api.util")
                 .scan()) {
             exposed.addAll(scan.getAllClasses().loadClasses());
         } catch (RuntimeException e) {

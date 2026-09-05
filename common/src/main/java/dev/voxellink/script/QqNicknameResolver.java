@@ -1,11 +1,11 @@
 package dev.voxellink.script;
 
-import dev.neovoxel.nbapi.action.data.BasicInfo;
-import dev.neovoxel.nbapi.action.data.GroupMemberInfo;
-import dev.neovoxel.nbapi.action.data.GroupMemberList;
-import dev.neovoxel.nbapi.action.get.GetGroupMemberInfo;
-import dev.neovoxel.nbapi.action.get.GetGroupMemberList;
-import dev.neovoxel.nbapi.client.NBotClient;
+import dev.voxellink.api.action.data.BasicInfo;
+import dev.voxellink.api.action.data.GroupMemberInfo;
+import dev.voxellink.api.action.data.GroupMemberList;
+import dev.voxellink.api.action.get.GetGroupMemberInfo;
+import dev.voxellink.api.action.get.GetGroupMemberList;
+import dev.voxellink.api.client.VBotClient;
 import dev.voxellink.VoxelLink;
 
 import java.util.Map;
@@ -62,7 +62,7 @@ public final class QqNicknameResolver {
     private String lookup(long groupId, long userId, boolean noCache) {
         CompletableFuture<GroupMemberInfo> future = new CompletableFuture<>();
         boolean dispatched = false;
-        for (NBotClient client : plugin.getBotProvider().getBot()) {
+        for (VBotClient client : plugin.getBotProvider().getBot()) {
             if (client.isConnected()) {
                 client.action(new GetGroupMemberInfo(groupId, userId, noCache), future::complete);
                 dispatched = true;
@@ -85,7 +85,7 @@ public final class QqNicknameResolver {
     private String lookupFromMemberList(long groupId, long userId) {
         CompletableFuture<GroupMemberList> future = new CompletableFuture<>();
         boolean dispatched = false;
-        for (NBotClient client : plugin.getBotProvider().getBot()) {
+        for (VBotClient client : plugin.getBotProvider().getBot()) {
             if (client.isConnected()) {
                 client.action(new GetGroupMemberList(groupId), future::complete);
                 dispatched = true;

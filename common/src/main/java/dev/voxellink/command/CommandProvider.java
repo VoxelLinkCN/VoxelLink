@@ -1,9 +1,9 @@
 package dev.voxellink.command;
 
-import dev.neovoxel.nbapi.client.NBotClient;
-import dev.neovoxel.nbapi.client.OBWSClient;
-import dev.neovoxel.nbapi.client.OBWSServer;
-import dev.neovoxel.nbapi.discord.client.DiscordClient;
+import dev.voxellink.api.client.VBotClient;
+import dev.voxellink.api.client.OBWSClient;
+import dev.voxellink.api.client.OBWSServer;
+import dev.voxellink.api.discord.client.DiscordClient;
 import dev.voxellink.VoxelLink;
 import dev.voxellink.adapter.CommandSender;
 import dev.voxellink.command.sub.RepositoryCommand;
@@ -15,8 +15,8 @@ import dev.voxellink.script.Script;
 import dev.voxellink.script.remote.RemoteScript;
 import dev.voxellink.script.remote.Repository;
 import dev.voxellink.util.HttpUtil;
-import dev.neovoxel.nsapi.entity.Row;
-import dev.neovoxel.nsapi.table.DatabaseTable;
+import dev.voxellink.storage.entity.Row;
+import dev.voxellink.storage.table.DatabaseTable;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.json.JSONArray;
@@ -114,7 +114,7 @@ public abstract class CommandProvider {
                                 sender.sendMessage(message);
                             }
                             sender.sendMessage(plugin.getMessageConfig().getString("internal.status.data.bot_head"));
-                            for (NBotClient client : plugin.getBotProvider().getBot()) {
+                            for (VBotClient client : plugin.getBotProvider().getBot()) {
                                 if (client instanceof OBWSServer) {
                                     sender.sendMessage(plugin.getMessageConfig().getString("internal.status.data.bot")
                                             .replace("${type}", "onebot11-ws-reverse")

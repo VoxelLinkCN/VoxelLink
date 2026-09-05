@@ -1,9 +1,9 @@
 package dev.voxellink.discord.repository;
 
 import dev.voxellink.discord.model.DiscordChannelBinding;
-import dev.neovoxel.nsapi.DatabaseStorage;
-import dev.neovoxel.nsapi.entity.Row;
-import dev.neovoxel.nsapi.table.DatabaseTable;
+import dev.voxellink.storage.DatabaseStorage;
+import dev.voxellink.storage.entity.Row;
+import dev.voxellink.storage.table.DatabaseTable;
 
 import java.util.ArrayList;
 import java.util.List;

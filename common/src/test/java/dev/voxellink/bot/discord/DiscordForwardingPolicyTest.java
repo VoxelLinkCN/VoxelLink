@@ -1,7 +1,7 @@
 package dev.voxellink.bot.discord;
 
-import dev.neovoxel.nbapi.discord.data.DiscordMessage;
-import dev.neovoxel.nbapi.discord.data.DiscordUser;
+import dev.voxellink.api.discord.data.DiscordMessage;
+import dev.voxellink.api.discord.data.DiscordUser;
 import dev.voxellink.discord.DiscordForwardingPolicy;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;

@@ -1,11 +1,11 @@
 package dev.voxellink.bot;
 
-import dev.neovoxel.nbapi.client.NBotClient;
-import dev.neovoxel.nbapi.client.OBWSClient;
-import dev.neovoxel.nbapi.client.OBWSServer;
-import dev.neovoxel.nbapi.discord.DiscordClients;
-import dev.neovoxel.nbapi.discord.client.DiscordClient;
-import dev.neovoxel.nbapi.discord.client.DiscordGatewayClient;
+import dev.voxellink.api.client.VBotClient;
+import dev.voxellink.api.client.OBWSClient;
+import dev.voxellink.api.client.OBWSServer;
+import dev.voxellink.api.discord.DiscordClients;
+import dev.voxellink.api.discord.client.DiscordClient;
+import dev.voxellink.api.discord.client.DiscordGatewayClient;
 import dev.voxellink.VoxelLink;
 import dev.voxellink.bot.discord.DiscordBotListener;
 import dev.voxellink.bot.discord.DiscordClientManager;
@@ -24,7 +24,7 @@ public class BotProvider {
     private static final long RECONNECT_BACKOFF_BASE_MILLIS = 5_000L;
     private static final long RECONNECT_BACKOFF_MAX_MILLIS = 300_000L;
 
-    private Map<String, NBotClient> clients = new HashMap<>();
+    private Map<String, VBotClient> clients = new HashMap<>();
     private final Map<String, ReconnectBackoff> reconnectBackoff = new HashMap<>();
     private BotListener listener;
     private final DiscordBotListener discordListener;
@@ -42,15 +42,15 @@ public class BotProvider {
         this.discordService.initialize();
     }
 
-    private void addBot(String type, NBotClient client) {
-        NBotClient previous = clients.put(type, client);
+    private void addBot(String type, VBotClient client) {
+        VBotClient previous = clients.put(type, client);
         closePrevious(previous, client, getBotListener());
     }
 
     /** A previous client left connected under the same type key becomes an orphaned connection that
      *  keeps dispatching every inbound event forever, duplicating replies (e.g. one command answered
      *  N times, once per orphan) with no way to self-heal. */
-    static void closePrevious(NBotClient previous, NBotClient replacement, dev.neovoxel.nbapi.listener.NBotListener listener) {
+    static void closePrevious(VBotClient previous, VBotClient replacement, dev.voxellink.api.listener.VBotListener listener) {
         if (previous == null || previous == replacement) return;
         previous.removeListener(listener);
         previous.disconnect();
@@ -60,7 +60,7 @@ public class BotProvider {
         this.listener = listener;
     }
 
-    public Collection<NBotClient> getBot() {
+    public Collection<VBotClient> getBot() {
         return clients.values();
     }
 
@@ -99,8 +99,8 @@ public class BotProvider {
             }
         }
         plugin.submitAsync(() -> {
-            for (Map.Entry<String, NBotClient> entry : clients.entrySet()) {
-                NBotClient client = entry.getValue();
+            for (Map.Entry<String, VBotClient> entry : clients.entrySet()) {
+                VBotClient client = entry.getValue();
                 String type = entry.getKey();
                 if (client.isConnected()) {
                     reconnectBackoff.remove(type);
@@ -212,8 +212,8 @@ public class BotProvider {
         return true;
     }
 
-    static boolean allConnected(Collection<NBotClient> bots, Collection<DiscordClient> discordClients) {
-        for (NBotClient client : bots) if (!client.isConnected()) return false;
+    static boolean allConnected(Collection<VBotClient> bots, Collection<DiscordClient> discordClients) {
+        for (VBotClient client : bots) if (!client.isConnected()) return false;
         for (DiscordClient client : discordClients) if (!client.isConnected()) return false;
         return true;
     }
@@ -231,7 +231,7 @@ public class BotProvider {
     }
 
     public void unloadBot() {
-        getBot().forEach(NBotClient::disconnect);
+        getBot().forEach(VBotClient::disconnect);
         discordClientManager.shutdownAll();
         reconnectBackoff.clear();
     }

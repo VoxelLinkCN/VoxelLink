@@ -1,6 +1,6 @@
 package dev.voxellink.discord;
 
-import dev.neovoxel.nbapi.discord.data.DiscordMessage;
+import dev.voxellink.api.discord.data.DiscordMessage;
 
 import java.util.Set;
 

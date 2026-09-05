@@ -28,8 +28,8 @@ public interface GameProvider {
 
     @HostAccess.Export
     default String parsePlaceholder(String message, OfflinePlayer player) {
-        // Placeholder key renamed from neobot to voxellink; any script/message text with the old
-        // literal placeholder written in by hand will stop matching after this change.
+        // Placeholder key now uses the voxellink prefix; old hand-written literal placeholders
+        // will no longer match.
         String regex = "%internal_voxellink_player_list_([^%]*)%";
 
         List<String> players = Arrays.stream(getOnlinePlayers()).map(Player::getName).collect(Collectors.toList());

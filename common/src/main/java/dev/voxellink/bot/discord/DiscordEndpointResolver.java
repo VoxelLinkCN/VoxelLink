@@ -1,6 +1,6 @@
 package dev.voxellink.bot.discord;
 
-import dev.neovoxel.nbapi.discord.client.DiscordGatewayClient;
+import dev.voxellink.api.discord.client.DiscordGatewayClient;
 
 import java.net.URI;
 import java.net.URISyntaxException;

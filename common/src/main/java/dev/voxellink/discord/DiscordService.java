@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.json.JSONArray;
-import dev.neovoxel.nsapi.entity.Row;
+import dev.voxellink.storage.entity.Row;
 
 /** Keeps Discord account and channel data independent from the OneBot data model. */
 public class DiscordService {
@@ -198,6 +198,6 @@ public class DiscordService {
     private String string(String path, String fallback) { String key = "bot.discord." + path; return plugin != null && plugin.getGeneralConfig().has(key) ? plugin.getGeneralConfig().getString(key) : fallback; }
     private String format(String path, String fallback) { return string(path, fallback); }
     private int maxBindings() { return Math.max(1, integer("account.maximum-bindings-per-user", 1)); }
-    private static boolean valid(String value) { try { dev.neovoxel.nbapi.discord.DiscordSnowflake.parse(value); return true; } catch (Exception e) { return false; } }
+    private static boolean valid(String value) { try { dev.voxellink.api.discord.DiscordSnowflake.parse(value); return true; } catch (Exception e) { return false; } }
     private static boolean qqUserIdValid(String value) { return value != null && value.matches("[0-9]{1,20}"); }
 }
