@@ -282,10 +282,25 @@ public class BotListener implements VBotListener {
                 eventName = "QQGroupMessageEvent";
                 context = event;
             }
-            dev.voxellink.script.ScriptDispatchResult result = plugin.getScriptProvider().dispatchBusiness(eventName, context);
-            plugin.getScriptProvider().executeBusinessActions(result);
+            dispatchAndExecute(eventName, context);
         }
         fireEvent("GroupMessageEvent", event);
+    }
+
+    /** Dispatches a script event and executes the returned actions off the WebSocket receive thread.
+     *  The receive thread is also the thread that delivers pending action responses (nickname/channel
+     *  lookups), so running the script synchronously here can deadlock the frame-processing loop and
+     *  silently drop messages. Scheduling via submitAsync lets the receive thread return immediately. */
+    private void dispatchAndExecute(String eventName, Object context) {
+        dev.voxellink.script.ScriptProvider provider = plugin.getScriptProvider();
+        if (provider == null) {
+            plugin.getNeoLogger().warn(eventName + " rejected: script system is not loaded");
+            return;
+        }
+        plugin.submitAsync(() -> {
+            dev.voxellink.script.ScriptDispatchResult result = provider.dispatchBusiness(eventName, context);
+            provider.executeBusinessActions(result);
+        });
     }
 
     private boolean isEnabledGroup(long id) { for (String g : plugin.getGeneralConfig().getStringArray("bot.options.enable-groups")) if (String.valueOf(id).equals(g)) return true; return false; }
@@ -317,8 +332,7 @@ public class BotListener implements VBotListener {
                 String eventName = "bind".equals(bindAction) ? "BindEvent" : "UnbindEvent";
                 Object context = new dev.voxellink.script.InboundCommandContext(
                         raw, senderId, "qq:private:" + senderId, "qq");
-                dev.voxellink.script.ScriptDispatchResult result = plugin.getScriptProvider().dispatchBusiness(eventName, context);
-                plugin.getScriptProvider().executeBusinessActions(result);
+                dispatchAndExecute(eventName, context);
             }
         }
         fireEvent("PrivateMessageEvent", event);

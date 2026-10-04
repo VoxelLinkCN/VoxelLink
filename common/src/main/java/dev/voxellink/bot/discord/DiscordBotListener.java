@@ -24,6 +24,7 @@ import java.util.Collection;
 public class DiscordBotListener implements VBotListener {
     private final VoxelLink plugin;
     private final Map<Value, String> handlers = new ConcurrentHashMap<>();
+    private final DiscordMessageDeduplicator seenCreateMessages = new DiscordMessageDeduplicator();
 
     public DiscordBotListener(VoxelLink plugin) {
         this.plugin = plugin;
@@ -134,6 +135,15 @@ public class DiscordBotListener implements VBotListener {
         if (event instanceof DiscordMessageEvent && "MESSAGE_CREATE".equals(event.getEventName())
                 && ((DiscordMessageEvent) event).getMessage().getAuthor() != null) {
             DiscordMessageEvent messageEvent = (DiscordMessageEvent) event;
+            // Discord delivers MESSAGE_CREATE once per gateway session; a repeat means the client
+            // ended up with two live sessions (reconnect race) or the delivery was replayed.
+            // Forwarding the repeat would duplicate the message in Minecraft and in any
+            // script-driven Discord sends, so repeats are dropped by message ID.
+            String messageId = Long.toString(messageEvent.getMessage().getId());
+            if (!seenCreateMessages.firstTime(messageId)) {
+                plugin.getNeoLogger().warn("Dropping duplicate Discord message delivery (id " + messageId + ")");
+                return;
+            }
             String channelId = Long.toString(messageEvent.getMessage().getChannelId());
             String content = messageEvent.getMessage().getContent() == null ? "" : messageEvent.getMessage().getContent();
             String userId = Long.toString(messageEvent.getMessage().getAuthor().getId());
@@ -177,14 +187,18 @@ public class DiscordBotListener implements VBotListener {
     }
 
     private void dispatchAndExecute(String eventName, Object context) {
-        dev.voxellink.script.ScriptDispatchResult result = plugin.getScriptProvider() == null
-                ? dev.voxellink.script.ScriptDispatchResult.rejected()
-                : plugin.getScriptProvider().dispatchBusiness(eventName, context);
         if (plugin.getScriptProvider() == null) {
             plugin.getNeoLogger().warn(eventName + " rejected: script system is not loaded");
             return;
         }
-        plugin.getScriptProvider().executeBusinessActions(result);
+        // Dispatch + action execution run off the gateway receive thread: the script may issue
+        // channel-name lookups that need the same thread to deliver their responses, so blocking
+        // here would self-deadlock and silently drop Discord messages.
+        dev.voxellink.script.ScriptProvider provider = plugin.getScriptProvider();
+        plugin.submitAsync(() -> {
+            dev.voxellink.script.ScriptDispatchResult result = provider.dispatchBusiness(eventName, context);
+            provider.executeBusinessActions(result);
+        });
     }
 
     static String scriptEventName(DiscordEvent event) {

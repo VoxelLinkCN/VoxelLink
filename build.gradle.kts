@@ -6,6 +6,7 @@ plugins {
 val graalModern by configurations.creating
 
 repositories {
+    maven("https://maven.aliyun.com/repository/central")
     mavenCentral()
 }
 
@@ -26,6 +27,7 @@ subprojects {
 
     repositories {
         mavenLocal()
+        maven("https://maven.aliyun.com/repository/central")
         mavenCentral()
     }
 
@@ -33,7 +35,7 @@ subprojects {
         // Runtime libraries are bundled into each platform jar. Keeping these
         // here avoids network access and class-loader mutation during startup.
         implementation("org.java-websocket:Java-WebSocket:1.6.0")
-        implementation("dev.voxellink.api:VoxBotAPI:1.3.0") {
+        implementation("dev.voxellink.api:VoxBotAPI:1.3.4") {
             exclude(group = "org.java-websocket")
             exclude(group = "org.apache.httpcomponents")
             exclude(group = "commons-codec")

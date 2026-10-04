@@ -105,6 +105,8 @@ class DefaultBusinessScriptTest {
 
     @Test
     void forwardsQqGroupMessagesToMinecraftWithResolvedNicknameInPlaceOfRawSenderId() {
+        business.qqGroups = new String[] {"111"};
+
         Result result = run("QQGroupMessageEvent", new FakeQqGroupMessageEvent(111L, 999L, "hi from qq"));
 
         assertTrue(result.handled);
@@ -113,6 +115,31 @@ class DefaultBusinessScriptTest {
         assertEquals(999L, business.lastResolveQqUserId);
         assertEquals(java.util.Collections.singletonList("minecraft:default"), result.targets);
         assertEquals(java.util.Collections.singletonList("sendToMinecraft"), result.actions);
+    }
+
+    @Test
+    void doesNotForwardQqGroupMessagesFromGroupsOutsideConfiguredQqGroups() {
+        business.qqGroups = new String[] {"111"};
+
+        Result result = run("QQGroupMessageEvent", new FakeQqGroupMessageEvent(999L, 888L, "hi from unknown group"));
+
+        assertTrue(result.handled);
+        assertTrue(result.content == null);
+        assertTrue(result.targets.isEmpty());
+        assertTrue(result.actions.isEmpty());
+        assertEquals(0L, business.lastResolveQqGroupId);
+        assertEquals(0L, business.lastResolveQqUserId);
+    }
+
+    @Test
+    void doesNotForwardQqGroupMessagesWhenNoQqGroupsConfigured() {
+        business.qqGroups = new String[0];
+
+        Result result = run("QQGroupMessageEvent", new FakeQqGroupMessageEvent(111L, 999L, "hi from qq"));
+
+        assertTrue(result.handled);
+        assertTrue(result.targets.isEmpty());
+        assertTrue(result.actions.isEmpty());
     }
 
     @Test
@@ -304,7 +331,7 @@ class DefaultBusinessScriptTest {
     }
 
     @Test
-    void suppressesBindAndUnbindSuccessNotificationsButStillSendsFailuresWhenNotifyBindSuccessDisabled() {
+    void suppressesAllBindAndUnbindRepliesIncludingFailuresWhenNotifyBindSuccessDisabled() {
         business.notifyBindSuccess = false;
 
         business.bindResult = "success";
@@ -319,13 +346,15 @@ class DefaultBusinessScriptTest {
 
         business.bindResult = "error:already-bound-or-conflict";
         Result bindFailure = run("BindEvent", new InboundCommandContext("/bind Steve", "qq-user-1", "qq:555", "qq"));
-        assertFalse(bindFailure.cancelled);
-        assertEquals("该账号已被绑定。", bindFailure.content);
+        assertTrue(bindFailure.cancelled, "failure replies must be silenced by the notify switch too");
+        assertNull(bindFailure.content);
+        assertEquals("error:already-bound-or-conflict", business.bindResult,
+                "the bind operation itself must still have been executed");
 
         business.unbindResult = "error:not-owner-or-unbound";
         Result unbindFailure = run("UnbindEvent", new InboundCommandContext("/unbind Steve", "qq-user-1", "qq:555", "qq"));
-        assertFalse(unbindFailure.cancelled);
-        assertEquals("该账号未绑定。", unbindFailure.content);
+        assertTrue(unbindFailure.cancelled);
+        assertNull(unbindFailure.content);
     }
 
     @Test

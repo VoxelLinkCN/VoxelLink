@@ -24,20 +24,28 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
 public class ScriptProvider {
-    private final ScriptDispatcher businessDispatcher = new ScriptDispatcher(2000L);
+    private final ScriptDispatcher businessDispatcher;
     private volatile BusinessActionExecutor actionExecutor;
     @Getter
     @Setter
     private boolean scriptSystemLoaded = false;
 
     private final List<ValueWithScript> placeholderParsers = new ArrayList<>();
-    
+
     private final Map<String, ValueWithScript> methods = new HashMap<>();
 
     private final VoxelLink plugin;
 
     public ScriptProvider(VoxelLink plugin) {
         this.plugin = plugin;
+        this.businessDispatcher = new ScriptDispatcher(2000L, (message, error) -> {
+            try {
+                if (error == null) plugin.getNeoLogger().warn(message);
+                else plugin.getNeoLogger().error(message, error);
+            } catch (RuntimeException ignored) {
+                // logger unavailable — never let diagnostics kill the dispatch path
+            }
+        });
         this.engine = GraalScriptRuntime.createEngine();
         initializeHostAccess();
     }

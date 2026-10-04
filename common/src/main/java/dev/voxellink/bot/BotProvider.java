@@ -120,7 +120,16 @@ public class BotProvider {
                 backoff.attemptStreak++;
             }
             try {
-                discordClientManager.reconnectDisconnected();
+                sweepDisconnectedDiscordClients(getDiscordClients(), reconnectBackoff, "discord",
+                        System.currentTimeMillis(), client -> {
+                            plugin.getNeoLogger().info("Attempting to reconnect bot client: discord");
+                            try {
+                                client.reconnect();
+                                plugin.getNeoLogger().info("Reconnect requested for bot client: discord");
+                            } catch (RuntimeException error) {
+                                plugin.getNeoLogger().error("Failed to reconnect bot client: discord", error);
+                            }
+                        });
             } catch (RuntimeException error) {
                 plugin.getNeoLogger().error("Failed to reconnect Discord", error);
             }
@@ -225,10 +234,37 @@ public class BotProvider {
         return Math.min(delay, RECONNECT_BACKOFF_MAX_MILLIS);
     }
 
-    private static final class ReconnectBackoff {
+    static final class ReconnectBackoff {
         int attemptStreak = 0;
         long nextAttemptAtMillis = 0;
     }
+
+    /** One reconnect sweep for the Discord clients, mirroring the QQ loop's exponential backoff.
+     *  Without it a disconnected Discord client was reconnected on EVERY check-interval tick. Each
+     *  plugin-side reconnect() collides with the gateway client's own internal async reconnect
+     *  (heartbeat-unack / onClose driven), and two concurrent reconnects on the same WebSocket
+     *  client can leave two live gateway sessions behind — every Discord message is then delivered
+     *  (and forwarded) twice, permanently. Backing off keeps this safety-net reconnect from racing
+     *  the client's self-healing; a connected client resets the streak. Returns the number of
+     *  reconnects requested. The action consumer must swallow its own runtime exceptions. */
+    static int sweepDisconnectedDiscordClients(Collection<DiscordClient> clients, Map<String, ReconnectBackoff> backoffs,
+                                               String key, long now, java.util.function.Consumer<DiscordClient> action) {
+        int requested = 0;
+        for (DiscordClient client : clients) {
+            if (client.isConnected()) {
+                backoffs.remove(key);
+                continue;
+            }
+            ReconnectBackoff backoff = backoffs.computeIfAbsent(key, k -> new ReconnectBackoff());
+            if (now < backoff.nextAttemptAtMillis) continue;
+            action.accept(client);
+            requested++;
+            backoff.nextAttemptAtMillis = now + nextBackoffMillis(backoff.attemptStreak);
+            backoff.attemptStreak++;
+        }
+        return requested;
+    }
+
 
     public void unloadBot() {
         getBot().forEach(VBotClient::disconnect);

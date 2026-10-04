@@ -30,6 +30,14 @@ scriptManager.registerBusinessScript("MinecraftChatEvent", function (event) {
 });
 scriptManager.registerBusinessScript("QQGroupMessageEvent", function (event) {
   if (!business.configuredChatForwardToGameEnabled()) return { handled: true, targets: [], actions: [] };
+  // Group whitelist: only forward messages from groups listed in bot.options.enable-groups.
+  var groups = business.configuredQqGroups();
+  var groupId = String(event.getGroupId());
+  var allowed = false;
+  for (var i = 0; i < groups.length; i++) {
+    if (String(groups[i]) === groupId) { allowed = true; break; }
+  }
+  if (!allowed) return { handled: true, targets: [], actions: [] };
   var content = business.configuredChatForwardToGameFormat()
     .split("${group}").join(String(event.getGroupId()))
     .split("${user}").join(business.resolveQqNickname(event.getGroupId(), event.getSenderId()))
@@ -116,7 +124,9 @@ scriptManager.registerBusinessScript("BindEvent", function (event) {
   if (parts.length !== 2) return { handled: true, cancelled: true };
   var platform = event.getPlatform();
   var result = business.bind(parts[1], event.getUserId(), platform);
-  if (isSuccessResult(result) && !business.configuredNotifyBindSuccess()) return { handled: true, cancelled: true };
+  // Notify switch gates ALL bind replies (success AND failure): turning the prompt off means
+  // the instance stays completely silent about bind operations, not just about successes.
+  if (!business.configuredNotifyBindSuccess()) return { handled: true, cancelled: true };
   var action = platform === "qq" ? "sendToQQ" : "sendToDiscord";
   return { handled: true, content: bindResultText(result, true), targets: [event.getReplyTarget()], actions: [action] };
 });
@@ -125,7 +135,7 @@ scriptManager.registerBusinessScript("UnbindEvent", function (event) {
   if (parts.length !== 2) return { handled: true, cancelled: true };
   var platform = event.getPlatform();
   var result = business.unbind(parts[1], event.getUserId(), platform);
-  if (isSuccessResult(result) && !business.configuredNotifyBindSuccess()) return { handled: true, cancelled: true };
+  if (!business.configuredNotifyBindSuccess()) return { handled: true, cancelled: true };
   var action = platform === "qq" ? "sendToQQ" : "sendToDiscord";
   return { handled: true, content: bindResultText(result, false), targets: [event.getReplyTarget()], actions: [action] };
 });
