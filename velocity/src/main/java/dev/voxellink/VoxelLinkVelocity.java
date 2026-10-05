@@ -9,6 +9,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.util.GameProfile;
 import dev.voxellink.adapter.*;
 import dev.voxellink.bot.BotProvider;
+import dev.voxellink.update.UpdateService;
 import dev.voxellink.command.CommandProvider;
 import dev.voxellink.config.EnhancedConfig;
 import dev.voxellink.config.ScriptConfig;
@@ -29,7 +30,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.time.Duration;
 
-@Plugin(id = "voxellink", name = "VoxelLink", version = "0.3.0", authors = {"VoxelLink"}, description = "A bot plugin that connects Minecraft with QQ, Kook, Discord, etc.")
+@Plugin(id = "voxellink", name = "VoxelLink", version = "0.4.0", authors = {"VoxelLink"}, description = "A bot plugin that connects Minecraft with QQ, Kook, Discord, etc.")
 public class VoxelLinkVelocity implements VoxelLink {
 
     @Getter
@@ -43,6 +44,10 @@ public class VoxelLinkVelocity implements VoxelLink {
     @Getter
     @Setter
     private BotProvider botProvider;
+
+    @Getter
+    @Setter
+    private UpdateService updateService;
 
     @Getter
     @Setter

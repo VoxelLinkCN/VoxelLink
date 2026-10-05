@@ -6,6 +6,7 @@ import dev.voxellink.adapter.executor.DedicatedExecutor;
 import dev.voxellink.adapter.executor.MinecraftServerExecutor;
 import dev.voxellink.adapter.executor.NativeExecutor;
 import dev.voxellink.bot.BotProvider;
+import dev.voxellink.update.UpdateService;
 import dev.voxellink.command.CommandProvider;
 import dev.voxellink.config.EnhancedConfig;
 import dev.voxellink.config.ScriptConfig;
@@ -35,6 +36,9 @@ public class VoxelLinkBukkit extends JavaPlugin implements VoxelLink {
 
     @Setter
     private BotProvider botProvider;
+
+    @Setter
+    private UpdateService updateService;
 
     @Setter
     private ScriptProvider scriptProvider;

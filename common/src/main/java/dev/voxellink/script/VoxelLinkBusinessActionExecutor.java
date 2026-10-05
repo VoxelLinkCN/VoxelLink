@@ -67,8 +67,16 @@ public final class VoxelLinkBusinessActionExecutor implements BusinessActionExec
         if (executorName == null) return "error:unknown-server";
         dev.voxellink.adapter.RemoteExecutor executor = plugin.getExecutorByName(executorName);
         if (executor == null || !executor.init()) return "error:executor-unavailable";
-        try { executor.execute(command); return executor.getResult() == null || executor.getResult().isEmpty() ? "success" : executor.getResult(); }
-        catch (RuntimeException error) { return "error:execution-failed"; }
+        // One shared executor instance serves every remote command: lock it across execute+getResult so
+        // two concurrent remote commands can't clear each other's captured output mid-read.
+        try {
+            String result;
+            synchronized (executor) {
+                executor.execute(command);
+                result = executor.getResult();
+            }
+            return result == null || result.isEmpty() ? "success" : result;
+        } catch (RuntimeException error) { return "error:execution-failed"; }
     }
     @Override public void executeAll(java.util.List<String> actions, java.util.List<String> targets, String content) {
         for (String action : actions) for (String target : targets) {

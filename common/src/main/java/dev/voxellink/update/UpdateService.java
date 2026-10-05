@@ -17,6 +17,17 @@ public class UpdateService {
     private final VoxelLink plugin;
     private final NewVersionNotifier notifier;
 
+    /** Latest release info observed by the periodic check. The status command reads this instead of
+     *  doing its own HTTP call: remote-command output capture only collects logs produced during the
+     *  synchronous command dispatch, so any async output (the old per-call version check, which can
+     *  take seconds through a proxy) was cut off after the first line. Null = not checked yet. */
+    private volatile String cachedLatestVersion;
+    private volatile String cachedLatestCommit;
+
+    /** Version the platforms were last notified about. Without this guard every periodic check that
+     *  still sees a newer release re-pings the QQ group owner / Discord channel over and over. */
+    private volatile String lastNotifiedVersion;
+
     public UpdateService(VoxelLink plugin) {
         this(plugin, new NewVersionNotifier(plugin));
     }
@@ -26,6 +37,10 @@ public class UpdateService {
         this.notifier = notifier;
     }
 
+    public String cachedLatestVersion() { return cachedLatestVersion; }
+
+    public String cachedLatestCommit() { return cachedLatestCommit; }
+
     public void checkForUpdate() {
         try {
             boolean needGithubProxy = plugin.getGeneralConfig().getBoolean("repository.use-github-proxy");
@@ -33,7 +48,15 @@ public class UpdateService {
             String currentVersion = plugin.getVersion();
             JSONObject release = HttpUtil.getLatestReleaseJson(needGithubProxy, githubProxy);
             String latestVersion = release.getString("name");
+            cachedLatestVersion = latestVersion;
+            try {
+                cachedLatestCommit = HttpUtil.getLatestCommit(needGithubProxy, githubProxy);
+            } catch (Exception commitError) {
+                // Version is already fresh; a failed commit lookup just keeps the previous value.
+            }
             if (!isNewer(currentVersion, latestVersion)) return;
+            if (latestVersion.equals(lastNotifiedVersion)) return;
+            lastNotifiedVersion = latestVersion;
             plugin.getNeoLogger().info("A new VoxelLink version is available: " + latestVersion
                     + " (current: " + currentVersion + ")");
             notifier.notifyNewVersion(currentVersion, latestVersion);

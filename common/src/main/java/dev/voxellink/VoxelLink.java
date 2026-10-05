@@ -37,6 +37,7 @@ public interface VoxelLink extends ConfigProvider, GameProvider, SchedulerProvid
             getBotProvider().loadBot(this);
             getNeoLogger().info("Scheduling update checks...");
             UpdateService updateService = new UpdateService(this);
+            setUpdateService(updateService);
             long checkIntervalSeconds = Math.max(1, getGeneralConfig().getInt("repository.auto-update.check-interval-minutes")) * 60L;
             submitAsync(updateService::checkForUpdate, 30, checkIntervalSeconds);
             getNeoLogger().info("Loading script system...");
@@ -131,6 +132,10 @@ public interface VoxelLink extends ConfigProvider, GameProvider, SchedulerProvid
     default DiscordService getDiscordService() { return getBotProvider().getDiscordService(); }
 
     void setBotProvider(BotProvider botProvider);
+
+    UpdateService getUpdateService();
+
+    void setUpdateService(UpdateService updateService);
 
     ScriptProvider getScriptProvider();
 

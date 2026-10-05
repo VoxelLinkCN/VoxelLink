@@ -14,14 +14,13 @@ import dev.voxellink.migrate.DataMigration;
 import dev.voxellink.script.Script;
 import dev.voxellink.script.remote.RemoteScript;
 import dev.voxellink.script.remote.Repository;
-import dev.voxellink.util.HttpUtil;
+import dev.voxellink.update.UpdateService;
 import dev.voxellink.storage.entity.Row;
 import dev.voxellink.storage.table.DatabaseTable;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.json.JSONArray;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -97,52 +96,52 @@ public abstract class CommandProvider {
                 } else sender.sendMessage(plugin.getMessageConfig().getMessage("internal.no-permission"));
             } else if (args[0].equalsIgnoreCase("status")) {
                 if (sender.hasPermission("voxellink.command.status")) {
-                    sender.sendMessage(plugin.getMessageConfig().getMessage("internal.status.fetching"));
-                    plugin.submitAsync(() -> {
-                        boolean needGithubProxy = plugin.getGeneralConfig().getBoolean("repository.use-github-proxy");
-                        String githubProxy = plugin.getGeneralConfig().getString("repository.github-proxy-url");
-                        String currentVersion = plugin.getVersion();
-                        try {
-                            String latestVersion = HttpUtil.getLatestVersion(needGithubProxy, githubProxy);
-                            String latestCommit = HttpUtil.getLatestCommit(needGithubProxy, githubProxy);
-                            sender.sendMessage(plugin.getMessageConfig().getMessage("internal.status.data.head"));
-                            for (String message : plugin.getMessageConfig().getStringArray("internal.status.data.basic")) {
-                                message = message
-                                        .replace("${version}", currentVersion)
-                                        .replace("${latest_version}", latestVersion)
-                                        .replace("${latest_commit}", latestCommit);
-                                sender.sendMessage(message);
-                            }
-                            sender.sendMessage(plugin.getMessageConfig().getString("internal.status.data.bot_head"));
-                            for (VBotClient client : plugin.getBotProvider().getBot()) {
-                                if (client instanceof OBWSServer) {
-                                    sender.sendMessage(plugin.getMessageConfig().getString("internal.status.data.bot")
-                                            .replace("${type}", "onebot11-ws-reverse")
-                                            .replace("${connected}", client.isConnected() ? "在线" : "离线"));
-                                } else if (client instanceof OBWSClient) {
-                                    sender.sendMessage(plugin.getMessageConfig().getString("internal.status.data.bot")
-                                            .replace("${type}", "onebot11-ws")
-                                            .replace("${connected}", client.isConnected() ? "在线" : "离线"));
-                                }
-                            }
-                            boolean discordEnabled = plugin.getGeneralConfig().has("bot.discord.enabled")
-                                    && plugin.getGeneralConfig().getBoolean("bot.discord.enabled");
-                            boolean discordConnected = discordEnabled
-                                    && !plugin.getBotProvider().getDiscordClients().isEmpty()
-                                    && plugin.getBotProvider().getDiscordClients().stream().anyMatch(DiscordClient::isConnected);
-                            String proxyMode = plugin.getGeneralConfig().has("bot.discord.proxy.mode")
-                                    ? plugin.getGeneralConfig().getString("bot.discord.proxy.mode") : "official";
-                            String channel = plugin.getGeneralConfig().has("bot.discord.channels.server-messages-channel-id")
-                                    ? plugin.getGeneralConfig().getString("bot.discord.channels.server-messages-channel-id") : "";
-                            sender.sendMessage(formatBotStatusLine(
-                                    plugin.getMessageConfig().getString("internal.status.data.bot"),
-                                    "discord",
-                                    buildDiscordStatusText(discordConnected, proxyMode, channel)));
-                        } catch (IOException e) {
-                            sender.sendMessage(plugin.getMessageConfig().getMessage("internal.status.error")
-                                    .replace("${error}", e.toString()));
+                    // Status is rendered synchronously from the update-check snapshot. Remote-command
+                    // output capture only collects logs produced during the synchronous command
+                    // dispatch; the old per-call HTTP version check ran async and its output arrived
+                    // seconds later, so remote status replies were cut off after the first line.
+                    UpdateService updateService = plugin.getUpdateService();
+                    String latestVersion = updateService == null ? null : updateService.cachedLatestVersion();
+                    String latestCommit = updateService == null ? null : updateService.cachedLatestCommit();
+                    if (latestVersion == null && updateService != null) {
+                        // Snapshot not filled yet (right after startup): kick a one-shot refresh so
+                        // the next status call has it, and show placeholders for this one.
+                        plugin.submitAsync(updateService::checkForUpdate);
+                    }
+                    String currentVersion = plugin.getVersion();
+                    sender.sendMessage(plugin.getMessageConfig().getMessage("internal.status.data.head"));
+                    for (String message : plugin.getMessageConfig().getStringArray("internal.status.data.basic")) {
+                        message = message
+                                .replace("${version}", currentVersion)
+                                .replace("${latest_version}", latestVersion == null ? "未知" : latestVersion)
+                                .replace("${latest_commit}", latestCommit == null ? "未知" : latestCommit);
+                        sender.sendMessage(message);
+                    }
+                    sender.sendMessage(plugin.getMessageConfig().getString("internal.status.data.bot_head"));
+                    for (VBotClient client : plugin.getBotProvider().getBot()) {
+                        if (client instanceof OBWSServer) {
+                            sender.sendMessage(plugin.getMessageConfig().getString("internal.status.data.bot")
+                                    .replace("${type}", "onebot11-ws-reverse")
+                                    .replace("${connected}", client.isConnected() ? "在线" : "离线"));
+                        } else if (client instanceof OBWSClient) {
+                            sender.sendMessage(plugin.getMessageConfig().getString("internal.status.data.bot")
+                                    .replace("${type}", "onebot11-ws")
+                                    .replace("${connected}", client.isConnected() ? "在线" : "离线"));
                         }
-                    });
+                    }
+                    boolean discordEnabled = plugin.getGeneralConfig().has("bot.discord.enabled")
+                            && plugin.getGeneralConfig().getBoolean("bot.discord.enabled");
+                    boolean discordConnected = discordEnabled
+                            && !plugin.getBotProvider().getDiscordClients().isEmpty()
+                            && plugin.getBotProvider().getDiscordClients().stream().anyMatch(DiscordClient::isConnected);
+                    String proxyMode = plugin.getGeneralConfig().has("bot.discord.proxy.mode")
+                            ? plugin.getGeneralConfig().getString("bot.discord.proxy.mode") : "official";
+                    String channel = plugin.getGeneralConfig().has("bot.discord.channels.server-messages-channel-id")
+                            ? plugin.getGeneralConfig().getString("bot.discord.channels.server-messages-channel-id") : "";
+                    sender.sendMessage(formatBotStatusLine(
+                            plugin.getMessageConfig().getString("internal.status.data.bot"),
+                            "discord",
+                            buildDiscordStatusText(discordConnected, proxyMode, channel)));
                 } else sender.sendMessage(plugin.getMessageConfig().getMessage("internal.no-permission"));
             } else if (args[0].equalsIgnoreCase("init")) {
                 if (sender.hasPermission("voxellink.command.init")) {
@@ -153,6 +152,8 @@ public abstract class CommandProvider {
                         sender.sendMessage(plugin.getMessageConfig().getMessage("internal.init.complete"));
                     });
                 } else sender.sendMessage(plugin.getMessageConfig().getMessage("internal.no-permission"));
+            } else {
+                sender.sendMessage("未知子命令: " + args[0] + "，输入 voxellink help 查看用法");
             }
         } else if (args.length == 2) {
             if (args[0].equalsIgnoreCase("migrate")) {
@@ -230,6 +231,8 @@ public abstract class CommandProvider {
                     } else sender.sendMessage(plugin.getMessageConfig().getMessage("internal.no-permission"));
                 }
             }
+        } else {
+            sender.sendMessage("未知子命令: " + args[0] + "，输入 voxellink help 查看用法");
         }
         methods.forEach(method -> method.execute(sender, args));
     }

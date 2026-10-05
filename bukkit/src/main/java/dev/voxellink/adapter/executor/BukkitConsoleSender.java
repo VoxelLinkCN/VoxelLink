@@ -31,10 +31,21 @@ public class BukkitConsoleSender implements RemoteExecutor {
      *  under that or a slow main thread would surface as an unexplained dispatcher rejection instead of
      *  this class's own clearer timeout failure. */
     private static final long MAIN_THREAD_TIMEOUT_MILLIS = 1500L;
+    /** ScriptDispatcher gives the whole RemoteCommandEvent handler 2000ms (ScriptProvider's
+     *  businessDispatcher timeout) before rejecting the call, so the late-output wait below is
+     *  sized to leave a margin inside that budget. */
+    private static final long SCRIPT_DISPATCH_BUDGET_MILLIS = 2000L;
+    /** Headroom for script rendering and the reply action once command output has settled. */
+    private static final long HANDLER_MARGIN_MILLIS = 200L;
+    /** Hard cap on the late-output wait. */
+    private static final long MAX_ASYNC_OUTPUT_WAIT_MILLIS = 1200L;
+    /** Stop waiting once this much time passes without a new captured line. */
+    private static final long QUIET_PERIOD_MILLIS = 300L;
 
-    private final List<String> messageList = new ArrayList<>();
+    private final List<String> messageList = Collections.synchronizedList(new ArrayList<>());
     private ConsoleCommandSender commandSender;
     private final Plugin plugin;
+    private long startedAtMillis;
 
     public BukkitConsoleSender() {
         this(null);
@@ -79,6 +90,7 @@ public class BukkitConsoleSender implements RemoteExecutor {
             init();
         }
         messageList.clear();
+        startedAtMillis = System.currentTimeMillis();
         if (Bukkit.isPrimaryThread()) {
             dispatchWithLogCapture(command);
             return;
@@ -99,6 +111,10 @@ public class BukkitConsoleSender implements RemoteExecutor {
         });
         try {
             completion.get(MAIN_THREAD_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+            // Commands that hand the capturing sender to background tasks (`voxellink status` does its
+            // version check async) keep producing output after dispatchCommand has returned. Without
+            // this window a remote reply shows only the first line and the rest is cut off.
+            awaitLateAsyncOutput();
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while waiting for command to run on the main thread: " + command, error);
@@ -112,7 +128,41 @@ public class BukkitConsoleSender implements RemoteExecutor {
     @HostAccess.Export
     @Override
     public String getResult() {
-        return String.join("\n", messageList);
+        synchronized (messageList) {
+            return String.join("\n", messageList);
+        }
+    }
+
+    /** Waits briefly for output that background tasks produce through the capturing sender after the
+     *  synchronous dispatch has returned (thread-safe: capture() may run on any thread). The wait is
+     *  adaptive — it stays inside the ScriptDispatcher's whole-handler budget — and stops early once
+     *  no new line has appeared for QUIET_PERIOD_MILLIS, so fast commands are only delayed briefly.
+     *  Never call on the main-thread path: blocking there would freeze the server tick. */
+    private void awaitLateAsyncOutput() {
+        long elapsed = System.currentTimeMillis() - startedAtMillis;
+        long grace = Math.min(MAX_ASYNC_OUTPUT_WAIT_MILLIS,
+                SCRIPT_DISPATCH_BUDGET_MILLIS - elapsed - HANDLER_MARGIN_MILLIS);
+        if (grace < QUIET_PERIOD_MILLIS) return;
+        long deadline = System.currentTimeMillis() + grace;
+        int knownLines;
+        synchronized (messageList) { knownLines = messageList.size(); }
+        long quietSince = System.currentTimeMillis();
+        while (System.currentTimeMillis() < deadline) {
+            try {
+                Thread.sleep(50L);
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            int size;
+            synchronized (messageList) { size = messageList.size(); }
+            if (size != knownLines) {
+                knownLines = size;
+                quietSince = System.currentTimeMillis();
+            } else if (System.currentTimeMillis() - quietSince >= QUIET_PERIOD_MILLIS) {
+                return;
+            }
+        }
     }
 
     /** Vanilla/Brigadier commands (list, whitelist, seed, ...) never reach this class's proxy at all: Paper's

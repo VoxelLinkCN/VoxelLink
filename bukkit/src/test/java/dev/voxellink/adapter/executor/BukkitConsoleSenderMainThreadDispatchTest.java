@@ -108,6 +108,47 @@ public class BukkitConsoleSenderMainThreadDispatchTest {
         }
     }
 
+    @Test
+    public void collectsOutputThatBackgroundTasksSendAfterTheDispatchReturns() throws Exception {
+        FakeServer server = FakeServer.recordingDispatchOnto(new AtomicReference<>());
+        setServer(server.proxy);
+        fakeMainThreadExecutor = server.mainThreadExecutor;
+
+        BukkitConsoleSender sender = new BukkitConsoleSender((Plugin) proxyFor(Plugin.class, noOpHandler()));
+        // execute() blocks through the late-output window, so the background task must already be
+        // running when dispatch returns — exactly like a real `voxellink status` async check.
+        Thread lateOutput = new Thread(() -> {
+            try { Thread.sleep(150L); } catch (InterruptedException ignored) { }
+            sender.capture(new Object[]{"- 版本: 0.4.0", "- 机器人连接信息"});
+        });
+        lateOutput.start();
+        long start = System.currentTimeMillis();
+        sender.execute("voxellink status");
+        lateOutput.join(1000L);
+        String result = sender.getResult();
+
+        assertTrue("output sent through the capturing sender after dispatch must still be collected",
+                result.contains("- 版本: 0.4.0"));
+        long elapsed = System.currentTimeMillis() - start;
+        assertTrue("the late-output wait must stay inside the script dispatcher's whole-handler budget",
+                elapsed < 1900L);
+    }
+
+    @Test
+    public void returnsPromptlyOnceTheLateOutputWindowGoesQuiet() throws Exception {
+        FakeServer server = FakeServer.recordingDispatchOnto(new AtomicReference<>());
+        setServer(server.proxy);
+        fakeMainThreadExecutor = server.mainThreadExecutor;
+
+        BukkitConsoleSender sender = new BukkitConsoleSender((Plugin) proxyFor(Plugin.class, noOpHandler()));
+        long start = System.currentTimeMillis();
+        sender.execute("list");
+
+        long elapsed = System.currentTimeMillis() - start;
+        assertTrue("without new lines the wait must end after the quiet period, not run to its full budget",
+                elapsed < 1000L);
+    }
+
     private static InvocationHandler noOpHandler() {
         return (proxy, method, args) -> {
             switch (method.getName()) {
