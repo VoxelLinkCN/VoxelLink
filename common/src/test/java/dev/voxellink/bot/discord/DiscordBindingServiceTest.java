@@ -37,6 +37,48 @@ class DiscordBindingServiceTest {
     }
 
     @Test
+    void qqBindPersistsThePlayerNameForTheLoginGateFallback() {
+        MemoryAccounts accounts = new MemoryAccounts();
+        DiscordService service = new DiscordService(null, new MemoryChannels(), accounts);
+        UUID bindTimeUuid = UUID.randomUUID();
+        TestOfflinePlayer player = new TestOfflinePlayer("Steve", bindTimeUuid);
+
+        assertTrue(service.bindFromQq("Steve", player, "1234567890"));
+        assertEquals("Steve", accounts.findByMinecraftUuid(bindTimeUuid).getMinecraftName());
+    }
+
+    @Test
+    void loginGateMatchesByNameWhenTheLoginUuidDiffersFromTheBindTimeUuid() {
+        MemoryAccounts accounts = new MemoryAccounts();
+        DiscordService service = new DiscordService(null, new MemoryChannels(), accounts);
+        UUID bindTimeUuid = UUID.randomUUID();
+        UUID loginUuid = UUID.randomUUID(); // e.g. Mojang uuid at login vs offline uuid stored at bind time
+        TestOfflinePlayer player = new TestOfflinePlayer("Steve", bindTimeUuid);
+
+        assertTrue(service.bindFromQq("Steve", player, "1234567890"));
+        // Direct uuid lookup misses, so the plain gate without the name fallback would kick a bound player:
+        assertNull(accounts.findByMinecraftUuid(loginUuid));
+        // ...but the gate matches through the stored name:
+        assertTrue(service.isAccountBound(loginUuid, "Steve"));
+        assertTrue(service.isAccountBound(loginUuid, "steve")); // case-insensitive
+        assertFalse(service.isAccountBound(UUID.randomUUID(), "Alex")); // never bound
+        assertFalse(service.isAccountBound(loginUuid, null));
+        assertFalse(service.isAccountBound(loginUuid, ""));
+    }
+
+    @Test
+    void loginGateStillMatchesDirectlyByUuidWhenAvailable() {
+        MemoryAccounts accounts = new MemoryAccounts();
+        DiscordService service = new DiscordService(null, new MemoryChannels(), accounts);
+        UUID bindTimeUuid = UUID.randomUUID();
+        TestOfflinePlayer player = new TestOfflinePlayer("Steve", bindTimeUuid);
+
+        assertTrue(service.bindFromQq("Steve", player, "1234567890"));
+        assertTrue(service.isAccountBound(bindTimeUuid, null));
+        assertTrue(service.isAccountBound(bindTimeUuid, "SomeoneElse"));
+    }
+
+    @Test
     void directBindingRejectsDuplicatesAndOnlyTheOwnerCanUnbind() {
         MemoryAccounts accounts = new MemoryAccounts();
         DiscordService service = new DiscordService(null, new MemoryChannels(), accounts);
@@ -71,9 +113,32 @@ class DiscordBindingServiceTest {
         private final Map<UUID, DiscordAccountBinding> values = new HashMap<>();
         public void initialize() { }
         public DiscordAccountBinding findByMinecraftUuid(UUID id) { return values.get(id); }
-        public List<DiscordAccountBinding> findByDiscordUserId(String id) { List<DiscordAccountBinding> result = new ArrayList<>(); for (DiscordAccountBinding v : values.values()) if (v.getDiscordUserId().equals(id)) result.add(v); return result; }
+        public List<DiscordAccountBinding> findByDiscordUserId(String id) { List<DiscordAccountBinding> result = new ArrayList<>(); for (DiscordAccountBinding v : values.values()) if (v.getDiscordUserId() != null && v.getDiscordUserId().equals(id)) result.add(v); return result; }
         public List<DiscordAccountBinding> findAll() { return new ArrayList<>(values.values()); }
         public boolean add(DiscordAccountBinding binding, int max) { if (values.containsKey(binding.getMinecraftUuid()) || findByDiscordUserId(binding.getDiscordUserId()).size() >= max) return false; values.put(binding.getMinecraftUuid(), binding); return true; }
         public boolean removeByMinecraftUuid(UUID id) { return values.remove(id) != null; }
+        public boolean bindQqUser(UUID uuid, String qqUserId) { return bindQqUser(uuid, null, qqUserId); }
+        public boolean bindQqUser(UUID uuid, String playerName, String qqUserId) {
+            if (qqUserId == null || !qqUserId.matches("[0-9]{1,20}") || findByQqUserId(qqUserId) != null) return false;
+            DiscordAccountBinding existing = values.get(uuid);
+            if (existing != null && existing.getQqUserId() != null && !existing.getQqUserId().isEmpty()) return false;
+            String name = playerName == null ? "" : playerName.trim();
+            if (existing == null) {
+                DiscordAccountBinding created = new DiscordAccountBinding(uuid, name, "");
+                created.setQqUserId(qqUserId);
+                values.put(uuid, created);
+            } else {
+                String storedName = existing.getMinecraftName() == null || existing.getMinecraftName().trim().isEmpty() ? name : existing.getMinecraftName();
+                DiscordAccountBinding updated = new DiscordAccountBinding(uuid, storedName, existing.getDiscordUserId());
+                updated.setQqUserId(qqUserId);
+                values.put(uuid, updated);
+            }
+            return true;
+        }
+        public DiscordAccountBinding findByMinecraftNameIgnoreCase(String name) {
+            if (name == null || name.trim().isEmpty()) return null;
+            for (DiscordAccountBinding v : values.values()) if (name.trim().equalsIgnoreCase(v.getMinecraftName())) return v;
+            return null;
+        }
     }
 }

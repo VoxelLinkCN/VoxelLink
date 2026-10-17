@@ -421,6 +421,16 @@ class DefaultBusinessScriptTest {
     }
 
     @Test
+    void allowsLoginWhenTheNameFallbackMatchesEvenWithADifferentUuid() {
+        business.accountRequireBinding = true;
+        business.boundNames.add("Steve");
+
+        FakeLoginEvent event = fireLogin("Steve", java.util.UUID.randomUUID());
+
+        assertFalse(event.disallowed);
+    }
+
+    @Test
     void disallowsLoginWhenBindingRequiredAndNeitherPlatformIsBound() {
         business.accountRequireBinding = true;
 
@@ -602,6 +612,13 @@ class DefaultBusinessScriptTest {
         public boolean configuredNotifyBindSuccess() { return notifyBindSuccess; }
         public boolean hasQqBinding(java.util.UUID uuid) { return qqBoundUuids.contains(uuid); }
         public boolean hasDiscordBinding(java.util.UUID uuid) { return discordBoundUuids.contains(uuid); }
+        public final java.util.Set<String> boundNames = new java.util.HashSet<>();
+        public boolean isAccountBound(java.util.UUID uuid, String playerName) {
+            if (qqBoundUuids.contains(uuid) || discordBoundUuids.contains(uuid)) return true;
+            if (playerName == null) return false;
+            for (String name : boundNames) if (name.equalsIgnoreCase(playerName.trim())) return true;
+            return false;
+        }
         public String bind(String playerName, String identity, String kind) {
             lastBindPlayer = playerName; lastBindIdentity = identity; lastBindKind = kind; return bindResult;
         }

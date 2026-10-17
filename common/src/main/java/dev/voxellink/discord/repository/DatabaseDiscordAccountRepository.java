@@ -82,18 +82,40 @@ public class DatabaseDiscordAccountRepository implements DiscordAccountRepositor
 
     @Override
     public synchronized boolean bindQqUser(UUID uuid, String qqUserId) {
+        return bindQqUser(uuid, null, qqUserId);
+    }
+
+    @Override
+    public synchronized boolean bindQqUser(UUID uuid, String playerName, String qqUserId) {
         if (qqUserId == null || !qqUserId.matches("[0-9]{1,20}") || findByQqUserId(qqUserId) != null) return false;
+        String name = playerName == null ? "" : playerName.trim();
         DiscordAccountBinding binding = findByMinecraftUuid(uuid);
         if (binding == null) {
-            table().insert().column("minecraft_uuid", uuid.toString()).column("minecraft_name", "")
+            table().insert().column("minecraft_uuid", uuid.toString()).column("minecraft_name", name)
                     .column("discord_user_id", "").column("qq_user_id", qqUserId).execute();
         } else if (binding.getQqUserId() != null && !binding.getQqUserId().isEmpty()) return false;
         else {
+            String storedName = binding.getMinecraftName() == null || binding.getMinecraftName().trim().isEmpty()
+                    ? name : binding.getMinecraftName();
             table().delete().where("minecraft_uuid", uuid.toString()).execute();
-            table().insert().column("minecraft_uuid", uuid.toString()).column("minecraft_name", binding.getMinecraftName())
+            table().insert().column("minecraft_uuid", uuid.toString()).column("minecraft_name", storedName)
                     .column("discord_user_id", binding.getDiscordUserId()).column("qq_user_id", qqUserId).execute();
         }
         return true;
+    }
+
+    @Override
+    public synchronized DiscordAccountBinding findByMinecraftNameIgnoreCase(String name) {
+        if (name == null || name.trim().isEmpty()) return null;
+        List<Row> rows = table().select("minecraft_uuid", "minecraft_name", "discord_user_id", "qq_user_id")
+                .where("minecraft_name", name.trim()).execute().map();
+        for (Row row : rows) if (name.trim().equalsIgnoreCase(row.getString("minecraft_name"))) return map(row);
+        // Exact-match WHERE misses rows stored under a different case; the binding table is small
+        // (bounded by players who ever bound), so a linear scan is the safe fallback.
+        for (Row row : table().select("minecraft_uuid", "minecraft_name", "discord_user_id", "qq_user_id").execute().map()) {
+            if (name.trim().equalsIgnoreCase(row.getString("minecraft_name"))) return map(row);
+        }
+        return null;
     }
 
     @Override

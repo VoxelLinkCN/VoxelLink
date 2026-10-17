@@ -218,4 +218,9 @@ public final class VoxelLinkBusinessActionExecutor implements BusinessActionExec
         dev.voxellink.discord.model.DiscordAccountBinding binding = plugin.getDiscordService().account(uuid);
         return binding != null && binding.getDiscordUserId() != null && !binding.getDiscordUserId().isEmpty();
     }
+    /** Login-gate helper: UUID match first, then a case-insensitive name fallback. Custom scripts may
+     *  keep using hasQqBinding/hasDiscordBinding; the default script uses this one. */
+    @HostAccess.Export public boolean isAccountBound(java.util.UUID uuid, String playerName) {
+        return plugin.getDiscordService().isAccountBound(uuid, playerName);
+    }
 }

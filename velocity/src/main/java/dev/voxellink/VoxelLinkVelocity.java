@@ -30,7 +30,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.time.Duration;
 
-@Plugin(id = "voxellink", name = "VoxelLink", version = "0.4.0", authors = {"VoxelLink"}, description = "A bot plugin that connects Minecraft with QQ, Kook, Discord, etc.")
+@Plugin(id = "voxellink", name = "VoxelLink", version = "0.5.0", authors = {"VoxelLink"}, description = "A bot plugin that connects Minecraft with QQ, Kook, Discord, etc.")
 public class VoxelLinkVelocity implements VoxelLink {
 
     @Getter

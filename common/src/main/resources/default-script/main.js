@@ -2,7 +2,7 @@
 // There is no Java fallback; concrete deployments should replace this script with their own policy.
 gameEvent.register("LoginEvent", function (event) {
   var uuid = event.getUuid();
-  if (business.configuredAccountRequireBinding() && !business.hasQqBinding(uuid) && !business.hasDiscordBinding(uuid)) {
+  if (business.configuredAccountRequireBinding() && !business.isAccountBound(uuid, event.getName())) {
     event.disallow(business.configuredAccountRequireBindingMessage().split("${player}").join(event.getName()));
   }
 });

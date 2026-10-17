@@ -95,7 +95,42 @@ public class DiscordService {
         if (!qqUserIdValid(qqUserId) || !resolves(playerName, player)) return false;
         DiscordAccountBinding existing = account(player.getUuid());
         if (existing != null && existing.getQqUserId() != null && !existing.getQqUserId().isEmpty()) return false;
-        return accounts.bindQqUser(player.getUuid(), qqUserId);
+        return accounts.bindQqUser(player.getUuid(), playerName, qqUserId);
+    }
+
+    /** Login-gate lookup: match by UUID first, then fall back to a case-insensitive name match.
+     *  Bind-time resolution (Bukkit.getOfflinePlayer) and the login profile can disagree on the
+     *  UUID — online-mode servers without Mojang API access resolve getOfflinePlayer to an offline
+     *  UUID while the real join carries the Mojang one, and offline-mode UUIDs are case-sensitive —
+     *  so a successful binding must still be findable through the stored player name. */
+    public boolean isAccountBound(UUID uuid, String playerName) {
+        DiscordAccountBinding binding = account(uuid);
+        if (binding != null && hasIdentity(binding)) return true;
+        String name = playerName == null ? "" : playerName.trim();
+        DiscordAccountBinding byName = name.isEmpty() ? null : accounts.findByMinecraftNameIgnoreCase(name);
+        if (byName != null && hasIdentity(byName)) {
+            if (plugin != null) {
+                plugin.getNeoLogger().warn("Binding for " + name + " matched by name: stored uuid "
+                        + byName.getMinecraftUuid() + " differs from the login uuid " + uuid
+                        + " (bind-time and login-time player resolution disagreed). Entry allowed.");
+            }
+            return true;
+        }
+        if (plugin != null) {
+            String detail = binding != null
+                    ? "binding row exists for this uuid but carries no qq/discord identity (corrupt row: name='"
+                      + binding.getMinecraftName() + "', qq='" + binding.getQqUserId() + "', discord='"
+                      + binding.getDiscordUserId() + "')"
+                    : "no binding row for this uuid" + (byName != null
+                        ? ", name row exists but also carries no identity" : ", name fallback miss");
+            plugin.getNeoLogger().warn("[LoginGate] rejected " + name + " (" + uuid + "): " + detail);
+        }
+        return false;
+    }
+
+    private static boolean hasIdentity(DiscordAccountBinding binding) {
+        return (binding.getQqUserId() != null && !binding.getQqUserId().isEmpty())
+                || (binding.getDiscordUserId() != null && !binding.getDiscordUserId().isEmpty());
     }
     public boolean unbindFromQq(String playerName, OfflinePlayer player, String qqUserId) {
         if (!qqUserIdValid(qqUserId) || !resolves(playerName, player)) return false;
