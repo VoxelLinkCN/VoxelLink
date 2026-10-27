@@ -67,6 +67,59 @@ class DiscordBindingServiceTest {
     }
 
     @Test
+    void unbindFromQqSurvivesUuidDriftBetweenBindAndUnbind() {
+        MemoryAccounts accounts = new MemoryAccounts();
+        DiscordService service = new DiscordService(null, new MemoryChannels(), accounts);
+        UUID bindTimeUuid = UUID.randomUUID();
+        UUID laterUuid = UUID.randomUUID(); // resolution changed between the two commands
+        assertTrue(service.bindFromQq("Steve", new TestOfflinePlayer("Steve", bindTimeUuid), "1234567890"));
+
+        assertTrue(service.unbindFromQq("Steve", new TestOfflinePlayer("Steve", laterUuid), "1234567890"));
+        assertNull(accounts.findByMinecraftUuid(bindTimeUuid));
+        assertFalse(service.isAccountBound(bindTimeUuid, "Steve"));
+    }
+
+    @Test
+    void rebindAfterDriftedUnbindLandsUnderTheCurrentUuid() {
+        MemoryAccounts accounts = new MemoryAccounts();
+        DiscordService service = new DiscordService(null, new MemoryChannels(), accounts);
+        UUID bindTimeUuid = UUID.randomUUID();
+        UUID laterUuid = UUID.randomUUID();
+        assertTrue(service.bindFromQq("Steve", new TestOfflinePlayer("Steve", bindTimeUuid), "1234567890"));
+        assertTrue(service.unbindFromQq("Steve", new TestOfflinePlayer("Steve", laterUuid), "1234567890"));
+
+        assertTrue(service.bindFromQq("Steve", new TestOfflinePlayer("Steve", laterUuid), "1234567890"));
+        assertNotNull(accounts.findByMinecraftUuid(laterUuid));
+        assertEquals("Steve", accounts.findByMinecraftUuid(laterUuid).getMinecraftName());
+        assertTrue(service.isAccountBound(laterUuid, null));
+    }
+
+    @Test
+    void unbindFromQqRecoversLegacyEmptyNameRowsViaQqOwnership() {
+        MemoryAccounts accounts = new MemoryAccounts();
+        DiscordService service = new DiscordService(null, new MemoryChannels(), accounts);
+        UUID legacyUuid = UUID.randomUUID();
+        assertTrue(accounts.bindQqUser(legacyUuid, null, "1234567890")); // legacy row: no stored name
+
+        assertNull(accounts.findByMinecraftNameIgnoreCase("Steve"));
+        assertTrue(service.unbindFromQq("Steve", new TestOfflinePlayer("Steve", UUID.randomUUID()), "1234567890"));
+        assertNull(accounts.findByMinecraftUuid(legacyUuid));
+    }
+
+    @Test
+    void unbindFromDiscordSurvivesUuidDriftToo() {
+        MemoryAccounts accounts = new MemoryAccounts();
+        DiscordService service = new DiscordService(null, new MemoryChannels(), accounts);
+        UUID bindTimeUuid = UUID.randomUUID();
+        assertTrue(service.bindFromDiscord("Steve", new TestOfflinePlayer("Steve", bindTimeUuid), "123456789012345678")
+                == DiscordService.AccountResult.SUCCESS);
+
+        assertEquals(DiscordService.AccountResult.SUCCESS,
+                service.unbindFromDiscord("Steve", new TestOfflinePlayer("Steve", UUID.randomUUID()), "123456789012345678"));
+        assertNull(accounts.findByMinecraftUuid(bindTimeUuid));
+    }
+
+    @Test
     void loginGateStillMatchesDirectlyByUuidWhenAvailable() {
         MemoryAccounts accounts = new MemoryAccounts();
         DiscordService service = new DiscordService(null, new MemoryChannels(), accounts);
@@ -139,6 +192,17 @@ class DiscordBindingServiceTest {
             if (name == null || name.trim().isEmpty()) return null;
             for (DiscordAccountBinding v : values.values()) if (name.trim().equalsIgnoreCase(v.getMinecraftName())) return v;
             return null;
+        }
+        public DiscordAccountBinding findByQqUserId(String id) {
+            for (DiscordAccountBinding v : values.values()) if (id.equals(v.getQqUserId())) return v;
+            return null;
+        }
+        public boolean unbindQqUser(UUID uuid, String qqUserId) {
+            DiscordAccountBinding binding = values.get(uuid);
+            if (binding == null || !qqUserId.equals(binding.getQqUserId())) return false;
+            if (binding.getDiscordUserId() == null || binding.getDiscordUserId().isEmpty()) return values.remove(uuid) != null;
+            binding.setQqUserId("");
+            return true;
         }
     }
 }

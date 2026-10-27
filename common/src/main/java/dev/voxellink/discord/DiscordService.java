@@ -59,7 +59,7 @@ public class DiscordService {
                         plugin.getNeoLogger().warn("Skipped legacy QQ binding for unknown player " + name);
                         continue;
                     }
-                    if (!accounts.bindQqUser(player.getUuid(), qq)) {
+                    if (!accounts.bindQqUser(player.getUuid(), name, qq)) {
                         plugin.getNeoLogger().warn("Skipped conflicting legacy QQ binding for " + qq + " -> " + name);
                     }
                 }
@@ -91,12 +91,6 @@ public class DiscordService {
 
     /** Shared binding lookup used by the OneBot bridge; QQ IDs remain strings at the boundary. */
     public DiscordAccountBinding accountForQq(String qqUserId) { return accounts.findByQqUserId(qqUserId); }
-    public boolean bindFromQq(String playerName, OfflinePlayer player, String qqUserId) {
-        if (!qqUserIdValid(qqUserId) || !resolves(playerName, player)) return false;
-        DiscordAccountBinding existing = account(player.getUuid());
-        if (existing != null && existing.getQqUserId() != null && !existing.getQqUserId().isEmpty()) return false;
-        return accounts.bindQqUser(player.getUuid(), playerName, qqUserId);
-    }
 
     /** Login-gate lookup: match by UUID first, then fall back to a case-insensitive name match.
      *  Bind-time resolution (Bukkit.getOfflinePlayer) and the login profile can disagree on the
@@ -132,9 +126,31 @@ public class DiscordService {
         return (binding.getQqUserId() != null && !binding.getQqUserId().isEmpty())
                 || (binding.getDiscordUserId() != null && !binding.getDiscordUserId().isEmpty());
     }
+    public boolean bindFromQq(String playerName, OfflinePlayer player, String qqUserId) {
+        if (!qqUserIdValid(qqUserId) || !resolves(playerName, player)) return false;
+        DiscordAccountBinding existing = resolveForPlayer(player.getUuid(), playerName);
+        if (existing != null && existing.getQqUserId() != null && !existing.getQqUserId().isEmpty()) return false;
+        UUID target = existing != null ? existing.getMinecraftUuid() : player.getUuid();
+        return accounts.bindQqUser(target, playerName, qqUserId);
+    }
+
     public boolean unbindFromQq(String playerName, OfflinePlayer player, String qqUserId) {
         if (!qqUserIdValid(qqUserId) || !resolves(playerName, player)) return false;
-        return accounts.unbindQqUser(player.getUuid(), qqUserId);
+        if (accounts.unbindQqUser(player.getUuid(), qqUserId)) return true;
+        // UUID drift between bind-time and now: fall back to the row that still belongs to this QQ id.
+        DiscordAccountBinding resolved = resolveForPlayer(player.getUuid(), playerName);
+        if (resolved != null && qqUserId.equals(resolved.getQqUserId())) return accounts.unbindQqUser(resolved.getMinecraftUuid(), qqUserId);
+        DiscordAccountBinding byQq = accounts.findByQqUserId(qqUserId);
+        return byQq != null && accounts.unbindQqUser(byQq.getMinecraftUuid(), qqUserId);
+    }
+
+    /** Binding lookup that survives uuid drift between the bind-time resolution and later ones:
+     *  direct uuid match first, then a case-insensitive match on the stored player name. */
+    private DiscordAccountBinding resolveForPlayer(UUID uuid, String playerName) {
+        DiscordAccountBinding binding = account(uuid);
+        if (binding != null) return binding;
+        return playerName == null || playerName.trim().isEmpty() ? null
+                : accounts.findByMinecraftNameIgnoreCase(playerName.trim());
     }
 
     public boolean adminBind(String playerName, UUID uuid, String discordUserId) {
@@ -167,7 +183,7 @@ public class DiscordService {
 
     public AccountResult bindFromDiscord(String playerName, OfflinePlayer player, String discordUserId) {
         if (!valid(discordUserId) || !resolves(playerName, player)) return AccountResult.INVALID_PLAYER;
-        if (account(player.getUuid()) != null) return AccountResult.PLAYER_ALREADY_BOUND;
+        if (resolveForPlayer(player.getUuid(), playerName) != null) return AccountResult.PLAYER_ALREADY_BOUND;
         if (accounts.findByDiscordUserId(discordUserId).size() >= maxBindings()) return AccountResult.USER_MAX_BINDINGS;
         return accounts.add(new DiscordAccountBinding(player.getUuid(), player.getName(), discordUserId), maxBindings())
                 ? AccountResult.SUCCESS : AccountResult.PLAYER_ALREADY_BOUND;
@@ -175,10 +191,15 @@ public class DiscordService {
 
     public AccountResult unbindFromDiscord(String playerName, OfflinePlayer player, String discordUserId) {
         if (!valid(discordUserId) || !resolves(playerName, player)) return AccountResult.INVALID_PLAYER;
-        DiscordAccountBinding binding = account(player.getUuid());
-        if (binding == null) return AccountResult.NOT_BOUND;
+        DiscordAccountBinding binding = resolveForPlayer(player.getUuid(), playerName);
+        if (binding == null) {
+            // Empty-name legacy row under a drifted uuid: still provably owned by this discord id.
+            List<DiscordAccountBinding> mine = accounts.findByDiscordUserId(discordUserId);
+            binding = mine.size() == 1 ? mine.get(0) : null;
+            if (binding == null) return AccountResult.NOT_BOUND;
+        }
         if (!discordUserId.equals(binding.getDiscordUserId())) return AccountResult.NOT_OWNER;
-        return accounts.removeByMinecraftUuid(player.getUuid()) ? AccountResult.SUCCESS : AccountResult.NOT_BOUND;
+        return accounts.removeByMinecraftUuid(binding.getMinecraftUuid()) ? AccountResult.SUCCESS : AccountResult.NOT_BOUND;
     }
 
     /** Whether Discord messages sent by the bot's own account should be ignored when forwarding to Minecraft. */
